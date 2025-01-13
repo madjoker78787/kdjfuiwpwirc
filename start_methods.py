@@ -6,9 +6,35 @@ import psycopg2
 
 from browser import driver_browser
 from helper import get_proxy
+from proxy_list import lst
 
 from dotenv import load_dotenv
 load_dotenv('.env')
+
+
+def start_one():
+    conn = psycopg2.connect(dbname="Telegram", host="localhost", user="postgres", password="postgres", port="5432")
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, number FROM data ORDER BY id")
+    nums = cursor.fetchall()
+    for i in nums:
+        print(f"id [ {i[0]} ] номер [ {i[1]} ]")
+
+    id_ = int(input("выбери номер(не id) -> "))
+    cursor.execute("SELECT id, number, port FROM data WHERE id = %s", (id_, ))
+    num = cursor.fetchone()
+    driver = driver_browser(user_folder=num[1],
+                            port_=num[2],
+                            proxy_=random.choice(lst))
+    cursor.close()
+    conn.close()
+    driver.set_window_size(950, 1000)
+    driver.get("https://web.telegram.org/k/")
+
+    try:
+        time.sleep(999999999)
+    except KeyboardInterrupt:
+        print("остановлен")
 
 
 def add_account():
@@ -29,7 +55,7 @@ def add_account():
                 driver = driver_browser(
                     user_folder=number,
                     port_=8742,
-                    proxy_=random.choice(get_proxy()),
+                    proxy_=random.choice(lst),
                     dev=False
                                         )
                 driver.get("https://web.telegram.org/k/")
@@ -55,7 +81,10 @@ def add_account():
     )
 
     driver.get("https://web.telegram.org/k/")
-    time.sleep(999999999)
+    try:
+        time.sleep(999999999)
+    except KeyboardInterrupt:
+        print("остановлен")
 
 
 def get_next_accounts(id_=0):

@@ -1,7 +1,7 @@
 import os
 from multiprocessing import Pool
 
-from start_methods import add_account
+from start_methods import add_account, start_one
 
 from BotClass import Bot
 from helper import (get_active_accounts,
@@ -49,7 +49,8 @@ if __name__ == '__main__':
         elif action == 3:
             add_account()
         elif action == 4:
-            ...
+            start_one()
+            break
         elif action == 5:
             ...
         elif action == 6:
