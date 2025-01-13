@@ -4,6 +4,7 @@ import sys
 import zlib
 from datetime import datetime
 from urllib.parse import urlparse, quote
+import subprocess
 
 from loguru import logger
 
@@ -20,6 +21,17 @@ logger.add(sink=sys.stdout, format="<white>{time:YYYY-MM-DD HH:mm:ss}</white>"
 logger = logger.opt(colors=True)
 
 load_dotenv('.env')
+
+
+def start_postgres_process():
+    process = subprocess.Popen('sc start "postgresql-X64-17"', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    stdout, stderr = process.communicate()
+
+    if stdout:
+        print(stdout.decode())
+    if stderr:
+        print(stderr.decode())
 
 
 def generate_telegram_url(link):
@@ -57,23 +69,124 @@ def get_proxy():
     return list_proxy
 
 
+def init_postgres():
+    conn = psycopg2.connect(
+        dbname="postgres",
+        host=os.getenv("DB_HOST"),
+        port=os.getenv("DB_PORT"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD")
+    )
+    conn.autocommit = True
+    cursor = conn.cursor()
+    cursor.execute(sql.SQL("SELECT 1 FROM pg_database WHERE datname = %s"), [os.getenv("DB_NAME")])
+    exists = cursor.fetchone() is not None
+    if not exists:
+        logger.info("создаем базу данных Telegram")
+        query = sql.SQL("CREATE DATABASE {}").format(sql.Identifier("Telegram"))
+        cursor.execute(query)
+        logger.info("база данных Telegram успешно создана")
+        cursor.close()
+        conn.close()
+    else:
+        logger.info("база данных Telegram уже создана")
+
+    if not check_table_exist(table_name=os.getenv("TABLE_TELEGRAM")):
+        conn = psycopg2.connect(
+            dbname=os.getenv("DB_NAME"),
+            host=os.getenv("DB_HOST"),
+            port=os.getenv("DB_PORT"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD")
+        )
+        cursor = conn.cursor()
+        logger.info(f"создаем таблицу {os.getenv('TABLE_TELEGRAM')}")
+        query = sql.SQL("""
+                CREATE TABLE IF NOT EXISTS {} (
+                    id SERIAL PRIMARY KEY,
+                    number VARCHAR(100),
+                    port VARCHAR(100),
+                    work VARCHAR(100) DEFAULT 1
+                )
+                """).format(sql.Identifier(os.getenv("TABLE_TELEGRAM")))
+        cursor.execute(query)
+        conn.commit()
+        cursor.execute("INSERT INTO data(number, port, work) VALUES(%s, %s, %s)", ("test", "8742", "0"))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        logger.success("таблица data создана")
+    else:
+        logger.info("таблица data уже создана")
+
+def check_table_exist(table_name):
+    conn = psycopg2.connect(
+        dbname=os.getenv("DB_NAME"),
+        host=os.getenv("DB_HOST"),
+        port=os.getenv("DB_PORT"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD")
+    )
+    cursor = conn.cursor()
+    query = """
+    SELECT EXISTS (
+        SELECT 1 
+        FROM information_schema.tables 
+        WHERE table_name = %s
+    );
+    """
+    cursor.execute(query, (table_name,))
+    table_exists = cursor.fetchone()[0]
+    cursor.close()
+    conn.close()
+    if table_exists:
+        return True
+    else:
+        return False
+
+
+def create_table(table_name):
+    if not check_table_exist(table_name):
+        conn = psycopg2.connect(
+            dbname=os.getenv('DB_NAME'),
+            host=os.getenv('DB_HOST'),
+            port=os.getenv('DB_PORT'),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD')
+        )
+        cursor = conn.cursor()
+        logger.info(f"создаем таблицу {os.getenv('DB_NAME')}.{table_name}")
+        query = sql.SQL("""
+                CREATE TABLE IF NOT EXISTS {} (
+                    id SERIAL PRIMARY KEY,
+                    data_id VARCHAR(100),
+                    last_visit VARCHAR(100)
+                )
+                """).format(sql.Identifier(os.getenv("TABLE_TELEGRAM")))
+        cursor.execute(query)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        logger.success(f"таблица {table_name} создана")
+
+
 def get_active_accounts():
-    conn = psycopg2.connect(db_name=os.getenv('DB_NAME'),
+    conn = psycopg2.connect(dbname=os.getenv('DB_NAME'),
                             host=os.getenv('DB_HOST'),
                             port=os.getenv('DB_PORT'),
                             user=os.getenv('DB_USER'),
                             password=os.getenv('DB_PASSWORD'))
     cursor = conn.cursor()
     cursor.execute("SELECT id, number, port FROM data WHERE work = %s", ("1", ))
-    data = cursor.fetchall()
+    data = cursor.fetchone()
     cursor.close()
     conn.close()
     return data
 
 
-def get_data(id_, table_name):
+def get_last_visit(id_, table_name):
     conn = psycopg2.connect(
-        dbname=os.getenv("DB_MAIN_NAME"),
+        dbname=os.getenv("DB_NAME"),
         host=os.getenv("DB_HOST"),
         port=os.getenv("DB_PORT"),
         user=os.getenv("DB_USER"),
@@ -81,23 +194,12 @@ def get_data(id_, table_name):
     )
     cursor = conn.cursor()
 
-    cursor.execute("SELECT number, port FROM data WHERE id = %s", (id, ))
-
-    r1 = cursor.fetchone()
-
     query = sql.SQL("SELECT last_visit FROM {} WHERE data_id = %s").format(sql.Identifier(table_name))
     cursor.execute(query, (id_,))
-    r2 = cursor.fetchone()
+    result = cursor.fetchone()
 
     cursor.close()
     conn.close()
-
-    result = [
-        id_, #id 0
-        r1[0], #number 1
-        r1[1], #port 2
-        r2[0] #last_visit 3
-    ]
 
     return result
 

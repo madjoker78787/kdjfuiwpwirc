@@ -7,17 +7,22 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from browser import driver_browser
-from helper import logger, generate_telegram_url, update_time, get_data
+from helper import logger, generate_telegram_url, update_time, get_last_visit
 from settings_bots import lst_bots
+
+from proxy_list import lst
 
 
 class Bot:
-    def __init__(self, session_id):
+    def __init__(self, dev=False, url=None):
         self.driver = None
+        self.session_id = None
         self.session_name = ""
+        self.port = None
+
         self.bot_name = ""
-        self.session_id = session_id
-        self.url = ""
+        self.url = url
+        self.dev = dev
 
     def enter(self, retry=0):
         url = generate_telegram_url(self.url)
@@ -54,23 +59,37 @@ class Bot:
                        f"зашел в бота <fg #898d90>{self.bot_name}</fg #898d90>")
         return True
 
-    def add_bot(self):
+    def add_bot(self, data):
+        self.session_id = data[0]
+        self.session_name = data[1]
+        self.port = data[2]
+
+        self.driver = driver_browser(user_folder=self.session_name,
+                                     port_=self.port,
+                                     proxy_=lst[self.session_id],
+                                     dev=self.dev)
         if self.enter():
             time.sleep(5)
             logger.success(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
                            f"бот <fg #898d90>{self.bot_name}</fg #898d90> добавлен")
             self.driver.quit()
 
-    def bot_run(self):
+    def bot_run(self, data):
+        self.session_id = data[0]
+        self.session_name = data[1]
+        self.port = data[2]
         for bot_name, bot_info in lst_bots.items():
-            get_my_data = get_data(self.session_id, bot_info['table_name'])
-            if datetime.now() > get_my_data[3] + timedelta(minutes=bot_info['delay']):
+            get_my_data = get_last_visit(self.session_id, bot_info['table_name'])
+            if datetime.now() > get_my_data[0] + timedelta(minutes=bot_info['delay']):
                 if callable(bot_info['function']):
-                    self.session_name = get_my_data[1]
                     self.bot_name = bot_name
                     self.url = bot_info['url']
+                    self.dev = bot_info['dev']
 
-                    self.driver = driver_browser(user_folder=self.session_name, port_=get_my_data[2])
+                    self.driver = driver_browser(user_folder=self.session_name,
+                                                 port_=self.port,
+                                                 proxy_=lst[self.session_id],
+                                                 dev=self.dev)
                     logger.success(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
                                    f"запуск бота <fg #898d90>{self.bot_name}</fg #898d90>")
                     if self.enter():

@@ -1,3 +1,5 @@
 Application/
 .env
 proxy.txt
+proxy_list.py
+__pycache__

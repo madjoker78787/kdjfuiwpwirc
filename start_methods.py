@@ -13,18 +13,18 @@ load_dotenv('.env')
 
 def add_account():
     number = input("номер телефона -> ")
-    conn = psycopg2.connect(db_name=os.getenv('DB_NAME'),
+    conn = psycopg2.connect(dbname=os.getenv('DB_NAME'),
                             host=os.getenv('DB_HOST'),
                             port=os.getenv('DB_PORT'),
                             user=os.getenv('DB_USER'),
                             password=os.getenv('DB_PASSWORD'))
     cursor = conn.cursor()
-    cursor.execute("SELECT number, port FROM not_pixel")
+    cursor.execute("SELECT number, port FROM data")
     numbers = cursor.fetchall()
     for i in numbers:
         if number.replace(' ', '') == str(i[0]).replace(' ', ''):
-            res = input(f" Номер {str(i[0]).replace(' ', '')} уже есть, обновить? [Y/N] ")
-            if res == "Y":
+            res = input(f"Номер {str(i[0]).replace('-', '')} уже есть, обновить? [ y/n ] ")
+            if res.lower() == "y":
                 print("Обновление...")
                 driver = driver_browser(
                     user_folder=number,
@@ -39,7 +39,7 @@ def add_account():
     if not_exist.lower() == "n":
         return
     print("Продолжаем...")
-    cursor.execute("SELECT port FROM not_pixel ORDER BY id DESC LIMIT 1")
+    cursor.execute("SELECT port FROM data ORDER BY id DESC LIMIT 1")
     port = cursor.fetchone()
     cursor.execute("INSERT INTO data(number, port) VALUES(%s, %s)",
                    (number, int(port[0]) + 1, ))

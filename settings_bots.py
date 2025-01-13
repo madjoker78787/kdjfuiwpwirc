@@ -5,6 +5,7 @@ lst_bots = {
             "table_name": "tiny_verse",
             "delay": 60,
             "url": "",
+            "dev": False,
             "function": tiny_verse_func
         },
     }
