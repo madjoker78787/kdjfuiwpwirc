@@ -5,12 +5,21 @@ from selenium.common import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from seleniumwire import webdriver
 
 from browser import driver_browser
 from helper import logger, generate_telegram_url, update_time, get_last_visit
 from settings_bots import lst_bots
 
 from proxy_list import lst
+
+# def check_bots(data):
+#     for bot_name, bot_info in lst_bots.items():
+#         get_my_data = get_last_visit(data[0], bot_info['table_name'])
+#         if (datetime.now() >
+#                 datetime.strptime(get_my_data[0], "%d.%m.%Y %H:%M") +
+#                 timedelta(minutes=bot_info['delay'])):
+#             Bot().bot_run(data=data)
 
 
 class Bot:
@@ -25,8 +34,12 @@ class Bot:
         self.dev = dev
 
     def enter(self, retry=0):
+
+        self.driver.get("https://web.telegram.org/k/")
+        # time.sleep(3)
         url = generate_telegram_url(self.url)
         self.driver.get(url)
+        # time.sleep(1)
         try:
             WebDriverWait(self.driver, 15).until(
                 EC.presence_of_element_located((By.CLASS_NAME, "popup-button.btn.primary.rp"))
@@ -38,7 +51,7 @@ class Bot:
         time.sleep(0.3)
         launch_btn = self.driver.find_elements(By.CLASS_NAME, "popup-button.btn.primary.rp")
         for launch in launch_btn:
-            if "LAUNCH" in launch.text:
+            if "launch" in launch.text.lower():
                 launch.click()
                 break
 
@@ -66,7 +79,7 @@ class Bot:
 
         self.driver = driver_browser(user_folder=self.session_name,
                                      port_=self.port,
-                                     proxy_=lst[self.session_id],
+                                     # proxy_=lst[self.session_id],
                                      dev=self.dev)
         if self.enter():
             time.sleep(5)
@@ -80,21 +93,22 @@ class Bot:
         self.port = data[2]
         for bot_name, bot_info in lst_bots.items():
             get_my_data = get_last_visit(self.session_id, bot_info['table_name'])
-            if datetime.now() > get_my_data[0] + timedelta(minutes=bot_info['delay']):
-                if callable(bot_info['function']):
-                    self.bot_name = bot_name
-                    self.url = bot_info['url']
-                    self.dev = bot_info['dev']
+            if datetime.now() > datetime.strptime(get_my_data[0], "%d.%m.%Y %H:%M") + timedelta(minutes=bot_info['delay']):
+                # if callable(bot_info['function']):
+                self.bot_name = bot_name
+                self.url = bot_info['url']
+                self.dev = bot_info['dev']
 
-                    self.driver = driver_browser(user_folder=self.session_name,
-                                                 port_=self.port,
-                                                 proxy_=lst[self.session_id],
-                                                 dev=self.dev)
-                    logger.success(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
-                                   f"запуск бота <fg #898d90>{self.bot_name}</fg #898d90>")
-                    if self.enter():
-                        result = bot_info['function'](self.driver)
-                        if result:
-                            update_time(id_=self.session_id, table_name=bot_info['table_name'])
-                            logger.success(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
-                                           f"закончил работу")
+                self.driver = driver_browser(user_folder=self.session_name,
+                                             port_=self.port,
+                                             proxy_=lst[self.session_id],
+                                             dev=self.dev)
+                logger.success(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
+                               f"запуск бота <fg #898d90>{self.bot_name}</fg #898d90>")
+                result_ = self.enter()
+                if result_:
+                    result = bot_info['function'](self.driver)
+                    if result:
+                        update_time(id_=self.session_id, table_name=bot_info['table_name'])
+                        logger.success(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
+                                       f"закончил работу")

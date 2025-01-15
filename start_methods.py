@@ -1,19 +1,22 @@
-import os
+
 import time
 import random
 
 import psycopg2
 
 from browser import driver_browser
-from helper import get_proxy
 from proxy_list import lst
 
-from dotenv import load_dotenv
-load_dotenv('.env')
-
+from config import settings
 
 def start_one():
-    conn = psycopg2.connect(dbname="Telegram", host="localhost", user="postgres", password="postgres", port="5432")
+    conn = psycopg2.connect(
+        dbname=settings.DB_NAME,
+        host=settings.DB_HOST,
+        port=settings.DB_PORT,
+        user=settings.DB_USER,
+        password=settings.DB_PASSWORD
+    )
     cursor = conn.cursor()
     cursor.execute("SELECT id, number FROM data ORDER BY id")
     nums = cursor.fetchall()
@@ -25,7 +28,8 @@ def start_one():
     num = cursor.fetchone()
     driver = driver_browser(user_folder=num[1],
                             port_=num[2],
-                            proxy_=random.choice(lst))
+                            # proxy_=random.choice(lst)
+                            )
     cursor.close()
     conn.close()
     driver.set_window_size(950, 1000)
@@ -39,11 +43,13 @@ def start_one():
 
 def add_account():
     number = input("номер телефона -> ")
-    conn = psycopg2.connect(dbname=os.getenv('DB_NAME'),
-                            host=os.getenv('DB_HOST'),
-                            port=os.getenv('DB_PORT'),
-                            user=os.getenv('DB_USER'),
-                            password=os.getenv('DB_PASSWORD'))
+    conn = psycopg2.connect(
+        dbname=settings.DB_NAME,
+        host=settings.DB_HOST,
+        port=settings.DB_PORT,
+        user=settings.DB_USER,
+        password=settings.DB_PASSWORD
+    )
     cursor = conn.cursor()
     cursor.execute("SELECT number, port FROM data")
     numbers = cursor.fetchall()
@@ -55,7 +61,7 @@ def add_account():
                 driver = driver_browser(
                     user_folder=number,
                     port_=8742,
-                    proxy_=random.choice(lst),
+                    # proxy_=random.choice(lst),
                     dev=False
                                         )
                 driver.get("https://web.telegram.org/k/")
@@ -76,7 +82,7 @@ def add_account():
     driver = driver_browser(
         user_folder=number,
         port_=int(port[0]) + 1,
-        proxy_=random.choice(get_proxy()),
+        proxy_=random.choice(lst),
         dev=False
     )
 
@@ -89,11 +95,13 @@ def add_account():
 
 def get_next_accounts(id_=0):
     a_ = int(input("введи id или оставь пустым -> "))
-    conn = psycopg2.connect(dbname=os.getenv('DB_NAME'),
-                            host=os.getenv('DB_HOST'),
-                            port=os.getenv('DB_PORT'),
-                            user=os.getenv('DB_USER'),
-                            password=os.getenv('DB_PASSWORD'))
+    conn = psycopg2.connect(
+        dbname=settings.DB_NAME,
+        host=settings.DB_HOST,
+        port=settings.DB_PORT,
+        user=settings.DB_USER,
+        password=settings.DB_PASSWORD
+    )
     cursor = conn.cursor()
     cursor.execute("SELECT id, number, port FROM data WHERE id = %s ORDER BY id ASC LIMIT 5",
                    (a_ if a_ != "" else id_, ))

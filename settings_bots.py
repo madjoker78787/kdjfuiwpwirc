@@ -4,7 +4,7 @@ lst_bots = {
         "tiny_verse": {
             "table_name": "tiny_verse",
             "delay": 60,
-            "url": "",
+            "url": "https://t.me/tverse?startapp",
             "dev": False,
             "function": tiny_verse_func
         },
