@@ -11,6 +11,7 @@ import psycopg2
 from psycopg2 import sql
 
 from config import settings
+from settings_bots import lst_bots
 
 
 logger.remove()
@@ -19,7 +20,6 @@ logger.add(sink=sys.stdout, format="<white>{time:YYYY-MM-DD HH:mm:ss}</white>"
                                    " | <cyan><b>{line}</b></cyan>"
                                    " - <white><b>{message}</b></white>")
 logger = logger.opt(colors=True)
-
 
 
 def start_postgres_process():
@@ -119,6 +119,10 @@ def init_postgres():
     else:
         logger.info("таблица data уже создана")
 
+    for table_name, _ in lst_bots.items():
+        create_table(table_name=table_name)
+
+
 def check_table_exist(table_name):
     conn = psycopg2.connect(
         dbname=settings.DB_NAME,
@@ -216,9 +220,15 @@ def update_time(id_, table_name):
         password=settings.DB_PASSWORD
     )
     cursor = conn.cursor()
-
-    query = sql.SQL("UPDATE {} SET last_visit = %s WHERE data_id = %s").format(sql.Identifier(table_name))
-    cursor.execute(query, (datetime.now().strftime("%d.%m.%Y %H:%M"), str(id_),))
+    query = sql.SQL("SELECT data_id FROM {} WHERE data_id = %s").format(sql.Identifier(table_name))
+    cursor.execute(query, str(id_))
+    get_data_ = cursor.fetchone()
+    if not get_data_:
+        query = sql.SQL("INSERT INTO {}(data_id, last_visit) VALUES(%s, %s)").format(sql.Identifier(table_name))
+        cursor.execute(query, (str(id_), datetime.now().strftime("%d.%m.%Y %H:%M"), ))
+    else:
+        query = sql.SQL("UPDATE {} SET last_visit = %s WHERE data_id = %s").format(sql.Identifier(table_name))
+        cursor.execute(query, (datetime.now().strftime("%d.%m.%Y %H:%M"), str(id_),))
     conn.commit()
     cursor.close()
     conn.close()
