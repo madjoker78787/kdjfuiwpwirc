@@ -8,13 +8,13 @@ lst_bots = {
         "dev": False,
         "function": tiny_verse_func
     },
-    "paws_bot": {
-        "table_name": "paws_bot",
-        "delay": 60 * 24,
-        "url": "https://t.me/PAWSOG_bot/PAWS?startapp",
-        "dev": False,
-        "function": tiny_verse_func
-    }
+    # "paws_bot": {
+    #     "table_name": "paws_bot",
+    #     "delay": 60 * 24,
+    #     "url": "https://t.me/PAWSOG_bot/PAWS?startapp",
+    #     "dev": False,
+    #     "function": tiny_verse_func
+    # }
 }
 
 # "name": {
