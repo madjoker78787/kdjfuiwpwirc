@@ -1,3 +1,4 @@
+import os
 import time
 
 from selenium.webdriver.common.by import By
@@ -7,21 +8,22 @@ from selenium.webdriver.support import expected_conditions as EC
 from browser import driver_browser
 
 
-def test_tvesre(user_, port_, pro=None):
-    driver = driver_browser(user_folder=user_, port_=port_, proxy_=pro)
+def test_main(user_, port_, pro=None):
+    driver = driver_browser(user_folder=user_, port_=port_, proxy_=pro, dev=True)
     driver.set_window_size(800, 900)
-    driver.get("https://web.telegram.org/k/#?tgaddr=tg%3A//resolve%3Fdomain%3Dtverse%26startapp")
-    try:
-        WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.CLASS_NAME, "popup-button.btn.primary.rp"))
-        )
-    except:
-        pass
-    launch_btn = driver.find_elements(By.CLASS_NAME, "popup-button.btn.primary.rp")
-    for launch in launch_btn:
-        if "LAUNCH" in launch.text:
-            launch.click()
-            break
+    driver.get("https://web.telegram.org/k/")
+    # driver.get("https://web.telegram.org/k/#?tgaddr=tg%3A//resolve%3Fdomain%3Dtverse%26startapp")
+    # try:
+    #     WebDriverWait(driver, 15).until(
+    #         EC.presence_of_element_located((By.CLASS_NAME, "popup-button.btn.primary.rp"))
+    #     )
+    # except:
+    #     pass
+    # launch_btn = driver.find_elements(By.CLASS_NAME, "popup-button.btn.primary.rp")
+    # for launch in launch_btn:
+    #     if "LAUNCH" in launch.text:
+    #         launch.click()
+    #         break
     while True:
         print(f"#1 - find 1 class\n"
               f"#2 - find many classes\n"
@@ -29,7 +31,8 @@ def test_tvesre(user_, port_, pro=None):
               f"#4 - click many classes\n"
               f"#5 - switch to frame\n"
               f"#6 - switch to default\n"
-              f"#7 - if + in\n")
+              f"#7 - if + in\n"
+              f"#8 - local override\n")
         x = input("insert -> ")
         if x == "1":
             elem = input("enter name class -> ")
@@ -79,3 +82,7 @@ def test_tvesre(user_, port_, pro=None):
                 print("+ yes")
             else:
                 print("- no")
+        elif x == "8":
+            scr = driver.find_elements(By.TAG_NAME, "script")
+            for i in scr:
+                print(i.get_attribute("src"))

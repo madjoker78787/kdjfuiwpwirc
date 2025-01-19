@@ -5,10 +5,14 @@ from selenium.common import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from seleniumwire import webdriver
 
 from browser import driver_browser
-from helper import logger, generate_telegram_url, update_time, get_last_visit
+from helper import (logger,
+                    generate_telegram_url,
+                    update_time,
+                    get_last_visit,
+                    local_override)
+
 from settings_bots import lst_bots
 
 from proxy_list import lst
@@ -62,6 +66,12 @@ class Bots:
                        f"зашел в бота <fg #898d90>{self.bot_name}</fg #898d90>")
         frame = self.driver.find_element(By.TAG_NAME, "iframe")
         self.driver.switch_to.frame(frame)
+        while True:
+            if self.driver.execute_script("return document.readyState") == "complete":
+                print("Страница полностью загружена.")
+                break
+            else:
+                time.sleep(1)
         return True
 
     def add_bot(self, data):
@@ -85,19 +95,20 @@ class Bots:
                            f"бот <fg #898d90>{self.bot_name}</fg #898d90> добавлен")
             self.driver.quit()
 
-    def bot_run(self, data):
+    def bot_run(self, data, retry=False):
         for bot_name, bot_info in lst_bots.items():
             get_my_data = get_last_visit(data[0], bot_info['table_name'])
             if (datetime.now() >
                     datetime.strptime(get_my_data[0], "%d.%m.%Y %H:%M") +
                     timedelta(minutes=bot_info['delay'])):
 
-                driver = driver_browser(user_folder=data[1],
-                                        port_=data[2],
-                                        proxy_=lst[data[0]],
-                                        dev=bot_info['dev'])
+                if not retry:
+                    driver = driver_browser(user_folder=data[1],
+                                            port_=data[2],
+                                            proxy_=lst[data[0]],
+                                            dev=bot_info['dev'])
 
-                self.driver = driver
+                    self.driver = driver
                 self.session_id = data[0]
                 self.session_name = data[1]
 
@@ -107,17 +118,33 @@ class Bots:
                 logger.info(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
                             f"запуск бота <fg #898d90>{self.bot_name}</fg #898d90>")
                 if self.enter():
-                    result = bot_info['function'](self.driver)
-                    if result:
-                        update_time(id_=data[0], table_name=bot_name)
-                        driver.quit()
-                        logger.success(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
-                                       f"закончил работу")
-                    else:
-                        driver.quit()
+                    if bot_info['dev']:
+                        override_info = bot_info.get("override")
+
+                        if not retry:
+                            if override_info['type'] != "None":
+                                override = local_override(driver=self.driver,
+                                                          text=override_info['text'],
+                                                          file_url=override_info['file'],
+                                                          type_=override_info['type'],
+                                                          location=override_info['location'])
+                                if override:
+                                    return self.bot_run(data=data, retry=True)
+                    try:
+                        result = bot_info['function'](self.driver)
+                        if result:
+                            update_time(id_=data[0], table_name=bot_name)
+                            self.driver.quit()
+                            logger.success(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
+                                           f"закончил работу")
+                        else:
+                            self.driver.quit()
+                            logger.success(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
+                                           f" НЕ закончил работу")
+                    except:
+                        self.driver.quit()
                         logger.success(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
                                        f" НЕ закончил работу")
-
 # --------------------------------------------------
 
 

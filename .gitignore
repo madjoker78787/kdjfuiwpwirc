@@ -1,7 +1,7 @@
 Application/
+hlam/
 proxy.txt
 proxy_list.py
 __pycache__
 Users
 git.txt
-../gitfetch.py

@@ -1,14 +1,19 @@
 import json
+import os
 import sys
 import zlib
 from datetime import datetime
 from urllib.parse import urlparse, quote
 import subprocess
 
+import requests
 from loguru import logger
 
 import psycopg2
 from psycopg2 import sql
+from selenium.webdriver.common.by import By
+
+from seleniumwire import webdriver
 
 from config import settings
 from settings_bots import lst_bots
@@ -21,6 +26,66 @@ logger.add(sink=sys.stdout, format="<white>{time:YYYY-MM-DD HH:mm:ss}</white>"
                                    " - <white><b>{message}</b></white>")
 logger = logger.opt(colors=True)
 
+
+def replace_override(lst: list[str], file_name, text):
+    text_from_replace = text.split(', ')
+    updated_content = [line.replace(text_from_replace[0], text_from_replace[1]) for line in lst]
+    with open(file_name, 'w', encoding='utf-8') as file:
+        file.writelines(updated_content)
+
+
+def remove_override(lst: list[str], file_name, text):
+    x = 0
+    output_lines = []
+    content = text.split('\n')
+    while x < len(lst):
+        if lst[x].strip() in content:
+            x += len(content)
+        else:
+            output_lines.append(lst[x])
+            x += 1
+    with open(file_name, 'w', encoding='utf-8') as outfile:
+        outfile.writelines(output_lines)
+
+
+def local_override(driver: webdriver.Chrome, text, file_url, type_, location):
+    logger.warning(f"запуск local override")
+    url = ""
+    if location == "html":
+        scr = driver.find_elements(By.TAG_NAME, "script")
+        for x in scr:
+            if file_url in x.get_attribute("src") and ".js" in x.get_attribute("src"):
+                url = x.get_attribute("src")
+                break
+    elif location == "request":
+        for req in driver.requests:
+            if file_url in req.url and ".js" in req.url:
+                url = req.url
+    # for req in driver.requests:
+    #     if file_url in req.url and ".js" in req.url:
+    response = requests.get(url)
+    if response.status_code == 200:
+        replacer = '/'
+        file_out_put = url.replace('https://', '').split(replacer)
+
+        base_path = f"OVERRIDE/{replacer.join(file_out_put[:-1])}"
+        if not os.path.basename(base_path) == file_out_put[-1]:
+            logger.warning(f"загружаю новый файл {file_out_put[-1]}")
+            try:
+                with open(f"{base_path}/{file_out_put[-1]}", 'wb') as f:
+                    f.write(response.content)
+            except:
+                pass
+            try:
+                with open(f"{base_path}/{file_out_put[-1]}", 'r', encoding='utf-8') as file:
+                    content = file.readlines()
+                    if type_ == "remove":
+                        remove_override(lst=content, file_name=f"{base_path}/{file_out_put[-1]}", text=text)
+                    if type_ == "replace":
+                        replace_override(lst=content, file_name=f"{base_path}/{file_out_put[-1]}", text=text)
+            except:
+                pass
+        return True
 
 def start_postgres_process():
     process = subprocess.Popen('sc start "postgresql-X64-17"', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -200,15 +265,13 @@ def get_last_visit(id_, table_name):
         password=settings.DB_PASSWORD
     )
     cursor = conn.cursor()
-
     query = sql.SQL("SELECT last_visit FROM {} WHERE data_id = %s").format(sql.Identifier(table_name))
     cursor.execute(query, (str(id_),))
     result = cursor.fetchone()
-
     cursor.close()
     conn.close()
-
     return result if result is not None else ["01.01.1970 00:00"]
+
 
 
 def update_time(id_, table_name):

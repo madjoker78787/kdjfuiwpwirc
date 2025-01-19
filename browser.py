@@ -23,7 +23,9 @@ def driver_browser(user_folder, port_, proxy_=None, dev=False) -> webdriver.Chro
     chrome_options.add_argument("--window-size=400, 800")
     chrome_options.add_argument("--ignore-certificate-errors")
     chrome_options.add_argument("--deny-permission-prompts")
+
     if dev:
+        chrome_options.add_argument("--enable-local-file-accesses")
         chrome_options.add_argument("--auto-open-devtools-for-tabs")
 
     chrome_options.add_argument(fr"--user-data-dir=.\Users\{user_folder}")

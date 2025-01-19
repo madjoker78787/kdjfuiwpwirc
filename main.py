@@ -12,7 +12,7 @@ from helper import (get_active_accounts,
                     check_table_exist,
                     create_table)
 
-from tests import test_tvesre
+from tests import test_main
 
 from config import settings
 
@@ -64,7 +64,7 @@ if __name__ == '__main__':
             elif action == 5:
                 ...
             elif action == 6:
-                test_tvesre(user_="test", port_="8742")
+                test_main(user_="test", port_="8742")
             elif action == 7:
                 try:
                     init_postgres()
