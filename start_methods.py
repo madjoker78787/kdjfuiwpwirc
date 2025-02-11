@@ -4,6 +4,7 @@ import random
 
 import psycopg2
 
+from AAA.dump.dump_ import dump_data_db
 from browser import driver_browser
 from proxy_list import lst
 
@@ -78,6 +79,9 @@ def add_account():
     conn.commit()
     cursor.close()
     conn.close()
+
+    print("обновление дампа...")
+    dump_data_db()
 
     driver = driver_browser(
         user_folder=number,

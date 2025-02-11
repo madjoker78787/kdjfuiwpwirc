@@ -1,5 +1,6 @@
-
 from multiprocessing import Pool
+
+from AAA.dump.dump_ import dump_data_db
 
 from start_methods import add_account, start_one
 
@@ -25,7 +26,8 @@ if __name__ == '__main__':
           "5 - запуск по несколько аккаунтов\n"
           "6 - запустить тест\n"
           "7 - инициализация базы данных и таблиц\n"
-          "8 - добавить таблицу\n")
+          "8 - добавить таблицу\n"
+          "9 - дамп таблицы data\n")
 
     while True:
         try:
@@ -64,7 +66,7 @@ if __name__ == '__main__':
             elif action == 5:
                 ...
             elif action == 6:
-                test_main(user_="test", port_="8742")
+                test_main(user_="test", port_="8742")#, pro=lst[0])
             elif action == 7:
                 try:
                     init_postgres()
@@ -73,5 +75,7 @@ if __name__ == '__main__':
             elif action == 8:
                 table_name = input("введи название новой таблицы(например название бота) -> ")
                 create_table(table_name=table_name)
+            elif action == 9:
+                dump_data_db()
         except KeyboardInterrupt:
             print("остановлен")

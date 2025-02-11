@@ -66,9 +66,11 @@ class Bots:
                        f"зашел в бота <fg #898d90>{self.bot_name}</fg #898d90>")
         frame = self.driver.find_element(By.TAG_NAME, "iframe")
         self.driver.switch_to.frame(frame)
+        start_time = datetime.now()
         while True:
+            if datetime.now() - start_time > timedelta(seconds=40):
+                return self.enter()
             if self.driver.execute_script("return document.readyState") == "complete":
-                print("Страница полностью загружена.")
                 break
             else:
                 time.sleep(1)
@@ -97,54 +99,57 @@ class Bots:
 
     def bot_run(self, data, retry=False):
         for bot_name, bot_info in lst_bots.items():
-            get_my_data = get_last_visit(data[0], bot_info['table_name'])
-            if (datetime.now() >
-                    datetime.strptime(get_my_data[0], "%d.%m.%Y %H:%M") +
-                    timedelta(minutes=bot_info['delay'])):
+            if bot_info['is_work']:
+                get_my_data = get_last_visit(data[0], bot_info['table_name'])
+                if (datetime.now() >
+                        datetime.strptime(get_my_data[0], "%d.%m.%Y %H:%M") +
+                        timedelta(minutes=bot_info['delay'])):
 
-                if not retry:
-                    driver = driver_browser(user_folder=data[1],
-                                            port_=data[2],
-                                            proxy_=lst[data[0]],
-                                            dev=bot_info['dev'])
+                    if not retry:
+                        driver = driver_browser(user_folder=data[1],
+                                                port_=data[2],
+                                                proxy_=lst[data[0]],
+                                                dev=bot_info['dev'])
 
-                    self.driver = driver
-                self.session_id = data[0]
-                self.session_name = data[1]
+                        self.driver = driver
+                    self.session_id = data[0]
+                    self.session_name = data[1]
 
-                self.bot_name = bot_name
-                self.url = bot_info['url']
+                    self.bot_name = bot_name
+                    self.url = bot_info['url']
 
-                logger.info(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
-                            f"запуск бота <fg #898d90>{self.bot_name}</fg #898d90>")
-                if self.enter():
-                    if bot_info['dev']:
-                        override_info = bot_info.get("override")
+                    logger.info(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
+                                f"запуск бота <fg #898d90>{self.bot_name}</fg #898d90>")
+                    if self.enter():
+                        if bot_info['dev']:
+                            override_info = bot_info.get("override")
 
-                        if not retry:
-                            if override_info['type'] != "None":
-                                override = local_override(driver=self.driver,
-                                                          text=override_info['text'],
-                                                          file_url=override_info['file'],
-                                                          type_=override_info['type'],
-                                                          location=override_info['location'])
-                                if override:
-                                    return self.bot_run(data=data, retry=True)
-                    try:
-                        result = bot_info['function'](self.driver)
-                        if result:
-                            update_time(id_=data[0], table_name=bot_name)
+                            if not retry:
+                                if override_info['type'] != "None":
+                                    override = local_override(driver=self.driver,
+                                                              text=override_info['text'],
+                                                              file_url=override_info['file'],
+                                                              type_=override_info['type'],
+                                                              location=override_info['location'])
+                                    if override:
+                                        return self.bot_run(data=data, retry=True)
+                        try:
+                            result = bot_info['function'](self.driver)
+                            if result:
+                                update_time(id_=data[0], table_name=bot_name)
+                                self.driver.quit()
+
+                                logger.success(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
+                                               f"<fg #898d90>{self.bot_name}</fg #898d90> закончил работу")
+                            else:
+                                self.driver.quit()
+                                logger.error(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
+                                               f"<fg #898d90>{self.bot_name}</fg #898d90> НЕ закончил работу")
+                        except:
                             self.driver.quit()
-                            logger.success(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
-                                           f"закончил работу")
-                        else:
-                            self.driver.quit()
-                            logger.success(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
-                                           f" НЕ закончил работу")
-                    except:
-                        self.driver.quit()
-                        logger.success(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
-                                       f" НЕ закончил работу")
+                            logger.error(f"<fg #e4abff>{self.session_id} {self.session_name}</fg #e4abff> | "
+                                           f"<fg #898d90>{self.bot_name}</fg #898d90> НЕ закончил работу")
+                        retry = False
 # --------------------------------------------------
 
 

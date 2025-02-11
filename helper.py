@@ -1,8 +1,9 @@
 import json
 import os
 import sys
+import time
 import zlib
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import urlparse, quote
 import subprocess
 
@@ -11,9 +12,14 @@ from loguru import logger
 
 import psycopg2
 from psycopg2 import sql
-from selenium.webdriver.common.by import By
+
 
 from seleniumwire import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common import TimeoutException
+
 
 from config import settings
 from settings_bots import lst_bots
@@ -87,6 +93,7 @@ def local_override(driver: webdriver.Chrome, text, file_url, type_, location):
                 pass
         return True
 
+
 def start_postgres_process():
     process = subprocess.Popen('sc start "postgresql-X64-17"', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -116,8 +123,7 @@ def generate_telegram_url(link):
     final_url = f"https://web.telegram.org/k/#?tgaddr={quote(op)}"
 
     return final_url
-# https://web.telegram.org/k/#?tgaddr=tg%3A%2F%2Fresolve%3Fdomain%3Dnotpixel%26appname%3Dapp%26startapp
-# print(generate_telegram_url("https://t.me/tverse?startapp"))
+
 
 def decode_string(s: bytes):
     decompressed = zlib.decompress(s, zlib.MAX_WBITS | 16)
@@ -295,3 +301,72 @@ def update_time(id_, table_name):
     conn.commit()
     cursor.close()
     conn.close()
+
+
+# def hard_reload(driver: webdriver.Chrome, retry=0):
+#     driver.switch_to.default_content()
+#     try:
+#         WebDriverWait(driver, 10).until(
+#             EC.presence_of_element_located((By.CLASS_NAME, "btn-icon._BrowserHeaderButton_m63td_65"
+#                                                            "._BrowserHeaderTabIcon_m63td_111"))
+#         )
+#     except TimeoutException:
+#         return False
+#     time.sleep(0.5)
+#     btn_icon = driver.find_elements(By.CLASS_NAME, "btn-icon._BrowserHeaderButton_m63td_65"
+#                                                         "._BrowserHeaderTabIcon_m63td_111")
+#     btn_icon[0].click()
+#     time.sleep(1)
+#
+#     try:
+#         WebDriverWait(driver, 10).until(
+#             EC.presence_of_element_located((By.CLASS_NAME, "btn-menu-item.rp-overflow"))
+#         )
+#     except TimeoutException:
+#         return False
+#     btn_menu_item = driver.find_elements(By.CLASS_NAME, "btn-menu-item.rp-overflow")
+#     for x in btn_menu_item:
+#         if "Reload" in x.text:
+#             x.click()
+#
+#     try:
+#         WebDriverWait(driver, 25).until(
+#             EC.presence_of_element_located((By.TAG_NAME, "iframe"))
+#         )
+#         iframe = driver.find_element(By.TAG_NAME, "iframe")
+#         src = iframe.get_attribute("src").split("7.10")
+#         driver.execute_script("arguments[0].setAttribute('src', arguments[1]);", iframe,
+#                                    f"{src[0]}8.0{src[1]}")
+#         driver.switch_to.frame(iframe)
+#
+#     except TimeoutException:
+#         if retry < 4:
+#             return hard_reload(driver=driver, retry=retry + 1)
+#         return False
+#
+#     start_time = datetime.now()
+#     while True:
+#         if datetime.now() - start_time > timedelta(seconds=40):
+#             return hard_reload(driver=driver, retry=retry + 1)
+#         if driver.execute_script("return document.readyState") == "complete":
+#             break
+#         else:
+#             time.sleep(1)
+#     return True
+
+
+def execute_js_code_pointer(driver: webdriver.Chrome, element, x, y):
+    js_code = """
+    function simulatePointerEvents(element, startX, startY) {{
+        const events = [
+            new PointerEvent('pointerdown', {{ clientX: startX, clientY: startY, bubbles: true }}),
+            new PointerEvent('pointermove', {{ clientX: startX, clientY: startY, bubbles: true }}),
+            new PointerEvent('pointerup', {{ clientX: startX, clientY: startY, bubbles: true }})
+        ];
+        events.forEach(event => element.dispatchEvent(event));
+    }}
+    const canvas = document.querySelector({0});
+
+    simulatePointerEvents(canvas, {1}, {2});
+    """.format(element, x, y)
+    driver.execute_script(js_code)
